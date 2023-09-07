@@ -10,7 +10,7 @@ node_modules/
 
 # env files
 .env
-# .env.localdev
+.env.localdev
 
 # test files
 .coverage
