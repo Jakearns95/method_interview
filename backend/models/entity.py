@@ -3,35 +3,44 @@ import uuid
 from pydantic import BaseModel, Field
 
 
-class Employee(BaseModel):
+class Entity(BaseModel):
     id: str = Field(default_factory=uuid.uuid4, alias="_id")
-    branch_id: str = Field(
-        description="UUID for the branch the employee belongs to",
-        example="BRC-5a32e859-e91a-490c-b4f2-bce67695f30c",
+    corp_id: str = Field(
+        description="UUID for the corporation the entity belongs to",
+        example="CORP-e4025d0e-0491-49ef-8284-2738c2d0a0cf",
     )
     first_name: str = Field(
         description="First name of the employee",
         example="Larry",
     )
-    last_name: str = Field(
-        description="Last name of the employee",
-        example="David",
+    address: dict = Field(
+        description="Address of the entity",
+        example={
+            "street": "123 Main St",
+            "city": "New York",
+            "state": "NY",
+            "zip": "10001",
+        },
     )
-    dob: str = Field(
-        description="Date of birth, in format YYYY-MM-DD, or Unix timestamp",
-        example="1999-12-31",
+    ein = Field(
+        description="Employer Identification Number",
+        example="123456789",
     )
-    phone: str = Field(
-        description="Phone number of the employee",
-        example="+16473020450",
+    dba = Field(
+        description="Doing Business As",
+        example="Method",
     )
-    status: str = Field(
-        description="Status of the ",
-        example="Pending",
+    account_id = Field(
+        description="Institution for payments account id",
+        example="acc_AXthnzpBnxxWP",
     )
     external_id = Field(
         description="External id for the entity",
         example="ext_123456789",
+    )
+    status: str = Field(
+        description="Status of the ",
+        example="Pending",
     )
 
     # TODO: can add in a mixin to set this for all models
