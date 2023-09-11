@@ -1,200 +1,361 @@
-from models import Employee, Payee, Payor, Payment, BatchFile
+from services.method import MethodService
+from models import Employee, Payee, Payor, Payment, BatchFile, PayorAccount
 import xmltodict
+import re
 from pymongo import MongoClient
 from pydantic import BaseModel
 
-# Establish a connection to the MongoDB server.
-client = MongoClient(
-    "mongodb+srv://method_interview:2L30JVXndSmjZVI9@methodinterview.dvn8psu.mongodb.net/methodinterview",
-    27017,
-)
-# Choose the database you want to use (e.g., "dunkin_database").
-db = client["dunkin_database"]
+# Things to do
+# Create db session function
+# Create way to get correct payee information by merchant - filter by plaid id
+# Create api calls for each type of model - look into breaking up payor
+# Hard code phone number
+# create workers to handle rate limiting and background tasks with retry logic
+# create endpoints for querying data
 
 xml_content = """
     <root>
         <row>
-            <Employee>
-                <DunkinId>EMP-208c8e79-8d85-4914-9a7a-8a899e67c530</DunkinId>
-                <DunkinBranch>BRC-5a32e859-e91a-490c-b4f2-bce67695f30c</DunkinBranch>
-                <FirstName>Madie</FirstName>
-                <LastName>Funk</LastName>
-                <DOB>12-13-2000</DOB>
-                <PhoneNumber>+16473020450</PhoneNumber>
-            </Employee>
-            <Payor>
-                <DunkinId>CORP-e4025d0e-0491-49ef-8284-2738c2d0a0cf</DunkinId>
-                <ABARouting>148386123</ABARouting>
-                <AccountNumber>12719660</AccountNumber>
-                <Name>Dunkin' Donuts LLC</Name>
-                <DBA>Dunkin' Donuts</DBA>
-                <EIN>32120240</EIN>
-                <Address>
-                    <Line1>999 Hayes Lights</Line1>
-                    <City>Kerlukemouth</City>
-                    <State>IA</State>
-                    <Zip>67485</Zip>
-                </Address>
-            </Payor>
-            <Payee>
-                <PlaidId>ins_116947</PlaidId>
-                <LoanAccountNumber>91400799</LoanAccountNumber>
-            </Payee>
-            <Amount>$7.03</Amount>
-        </row>
-        <row>
-            <Employee>
-                <DunkinId>EMP-208c8e79-8d85-4914-9a7a-8a899e67c530</DunkinId>
-                <DunkinBranch>BRC-5a32e859-e91a-490c-b4f2-bce67695f30c</DunkinBranch>
-                <FirstName>Madie</FirstName>
-                <LastName>Funk</LastName>
-                <DOB>12-13-2000</DOB>
-                <PhoneNumber>+16473020450</PhoneNumber>
-            </Employee>
-            <Payor>
-                <DunkinId>CORP-e4025d0e-0491-49ef-8284-2738c2d0a0cf</DunkinId>
-                <ABARouting>148386123</ABARouting>
-                <AccountNumber>12719660</AccountNumber>
-                <Name>Dunkin' Donuts LLC</Name>
-                <DBA>Dunkin' Donuts</DBA>
-                <EIN>32120240</EIN>
-                <Address>
-                    <Line1>999 Hayes Lights</Line1>
-                    <City>Kerlukemouth</City>
-                    <State>IA</State>
-                    <Zip>67485</Zip>
-                </Address>
-            </Payor>
-            <Payee>
-                <PlaidId>ins_116947</PlaidId>
-                <LoanAccountNumber>91400799</LoanAccountNumber>
-            </Payee>
-            <Amount>$7.13</Amount>
-        </row>
+        <Employee>
+            <DunkinId>EMP-a7f138d9-1885-43db-b5c7-6b7c09020b4f</DunkinId>
+            <DunkinBranch>BRC-bbfbdfe5-0173-4613-8b07-aadb828e67f6</DunkinBranch>
+            <FirstName>Ariel</FirstName>
+            <LastName>Hayes</LastName>
+            <DOB>03-26-1987</DOB>
+            <PhoneNumber>+14594036784</PhoneNumber>
+        </Employee>
+        <Payor>
+            <DunkinId>CORP-7dc67e67-e879-4da0-8fee-7d14ba4752b8</DunkinId>
+            <ABARouting>403911437</ABARouting>
+            <AccountNumber>40909581</AccountNumber>
+            <Name>Dunkin' Donuts LLC</Name>
+            <DBA>Dunkin' Donuts</DBA>
+            <EIN>32120240</EIN>
+            <Address>
+                <Line1>999 Hayes Lights</Line1>
+                <City>Kerlukemouth</City>
+                <State>IA</State>
+                <Zip>67485</Zip>
+            </Address>
+        </Payor>
+        <Payee>
+            <PlaidId>ins_116248</PlaidId>
+            <LoanAccountNumber>04807469</LoanAccountNumber>
+        </Payee>
+        <Amount>$8.15</Amount>
+    </row>
+    <row>
+        <Employee>
+            <DunkinId>EMP-a2c0b94b-8152-497f-81b2-154de316b5fe</DunkinId>
+            <DunkinBranch>BRC-2d047a52-d2d0-4af0-88d4-f60cad1e613c</DunkinBranch>
+            <FirstName>Fletcher</FirstName>
+            <LastName>Rowe</LastName>
+            <DOB>12-13-2002</DOB>
+            <PhoneNumber>+16385328761</PhoneNumber>
+        </Employee>
+        <Payor>
+            <DunkinId>CORP-a9804e0b-e8b0-4837-8bbe-aabafcd483dd</DunkinId>
+            <ABARouting>547414133</ABARouting>
+            <AccountNumber>93785544</AccountNumber>
+            <Name>Dunkin' Donuts LLC</Name>
+            <DBA>Dunkin' Donuts</DBA>
+            <EIN>32120240</EIN>
+            <Address>
+                <Line1>999 Hayes Lights</Line1>
+                <City>Kerlukemouth</City>
+                <State>IA</State>
+                <Zip>67485</Zip>
+            </Address>
+        </Payor>
+        <Payee>
+            <PlaidId>ins_116945</PlaidId>
+            <LoanAccountNumber>39157047</LoanAccountNumber>
+        </Payee>
+        <Amount>$1.56</Amount>
+    </row>
+    <row>
+        <Employee>
+            <DunkinId>EMP-1e4f673d-d683-4597-958c-cb9cc4689653</DunkinId>
+            <DunkinBranch>BRC-5713fc98-f3fe-4a69-b9f2-f29ab079b917</DunkinBranch>
+            <FirstName>Lindsay</FirstName>
+            <LastName>Yundt</LastName>
+            <DOB>02-20-1996</DOB>
+            <PhoneNumber>+14727956066</PhoneNumber>
+        </Employee>
+        <Payor>
+            <DunkinId>CORP-55988522-7698-46ba-bddd-4bc2956a6bb4</DunkinId>
+            <ABARouting>030748921</ABARouting>
+            <AccountNumber>93347373</AccountNumber>
+            <Name>Dunkin' Donuts LLC</Name>
+            <DBA>Dunkin' Donuts</DBA>
+            <EIN>32120240</EIN>
+            <Address>
+                <Line1>999 Hayes Lights</Line1>
+                <City>Kerlukemouth</City>
+                <State>IA</State>
+                <Zip>67485</Zip>
+            </Address>
+        </Payor>
+        <Payee>
+            <PlaidId>ins_116861</PlaidId>
+            <LoanAccountNumber>68777667</LoanAccountNumber>
+        </Payee>
+        <Amount>$6.72</Amount>
+    </row>
+    <row>
+        <Employee>
+            <DunkinId>EMP-ac719fbd-0a27-4db9-9285-ee2a8e6bece4</DunkinId>
+            <DunkinBranch>BRC-52b071ba-5b35-4743-b219-40230551cd8c</DunkinBranch>
+            <FirstName>Aurelia</FirstName>
+            <LastName>Metz</LastName>
+            <DOB>07-27-2003</DOB>
+            <PhoneNumber>+16019260414</PhoneNumber>
+        </Employee>
+        <Payor>
+            <DunkinId>CORP-55988522-7698-46ba-bddd-4bc2956a6bb4</DunkinId>
+            <ABARouting>030748921</ABARouting>
+            <AccountNumber>93347373</AccountNumber>
+            <Name>Dunkin' Donuts LLC</Name>
+            <DBA>Dunkin' Donuts</DBA>
+            <EIN>32120240</EIN>
+            <Address>
+                <Line1>999 Hayes Lights</Line1>
+                <City>Kerlukemouth</City>
+                <State>IA</State>
+                <Zip>67485</Zip>
+            </Address>
+        </Payor>
+        <Payee>
+            <PlaidId>ins_116944</PlaidId>
+            <LoanAccountNumber>00299532</LoanAccountNumber>
+        </Payee>
+        <Amount>$1.58</Amount>
+    </row>
+    <row>
+        <Employee>
+            <DunkinId>EMP-000285fa-d544-4bf6-8e3b-4513786c01d6</DunkinId>
+            <DunkinBranch>BRC-b19e8df1-77b7-40f4-a290-a909eb741e5b</DunkinBranch>
+            <FirstName>Uriah</FirstName>
+            <LastName>Krajcik</LastName>
+            <DOB>09-06-2003</DOB>
+            <PhoneNumber>+15733534238</PhoneNumber>
+        </Employee>
+        <Payor>
+            <DunkinId>CORP-1f5ba4e7-926a-47c5-9031-b07ad1dd6261</DunkinId>
+            <ABARouting>181222943</ABARouting>
+            <AccountNumber>41927033</AccountNumber>
+            <Name>Dunkin' Donuts LLC</Name>
+            <DBA>Dunkin' Donuts</DBA>
+            <EIN>32120240</EIN>
+            <Address>
+                <Line1>999 Hayes Lights</Line1>
+                <City>Kerlukemouth</City>
+                <State>IA</State>
+                <Zip>67485</Zip>
+            </Address>
+        </Payor>
+        <Payee>
+            <PlaidId>ins_108798</PlaidId>
+            <LoanAccountNumber>48380432</LoanAccountNumber>
+        </Payee>
+        <Amount>$10.08</Amount>
+    </row>
     </root>
     """
 
 
 class DataService:
+    def __init__(self):
+        self._initialize_database_connection()
+        self.payments_collection = self.db["payments"]
+
+    def _initialize_database_connection(self):
+        connection_string = "ENV VAR"
+        self.client = MongoClient(connection_string, 27017)
+        self.db = self.client["dunkin_database"]
+
     @staticmethod
-    def save_batch_file(xml_content: dict) -> str:
-        collection = db["batch_files"]
+    def _get_collection_filter(data: BaseModel, collection_name: str) -> dict:
+        filters = {
+            "payors": "dunkin_id",
+            "employees": "dunkin_id",
+            "payees": "plaid_id",
+            "payor_account": "account_number",
+        }
+        attribute = filters.get(collection_name)
+        if attribute and hasattr(data, attribute):
+            return {attribute: getattr(data, attribute)}
+        return {}
+
+    def save_batch_file(self, xml_content: dict) -> str:
         batch = BatchFile(content=xml_content)
-        result = collection.insert_one(batch.dict())
-        return result.inserted_id  # Return the ID of the created batch record
+        return self.db["batch_files"].insert_one(batch.dict()).inserted_id
 
     @staticmethod
-    def call_third_party_api(data):
-        return "Status"
+    def call_third_party_api(data: BaseModel, collection_name: str):
+        collection_map = {
+            "employees": {
+                "method": MethodService.create_entity,
+                "payload": {
+                    "type": "individual",
+                    "individual": {
+                        "first_name": "Kevin",
+                        "last_name": "Doyle",
+                        "phone": "+16505555555",
+                        "email": "kevin.doyle@gmail.com",
+                        "dob": "1997-03-18",
+                    },
+                    "address": {},
+                },
+            },
+            "payors": {
+                "method": MethodService.create_entity,
+                "payload": {
+                    "type": "c_corporation",
+                    "corporation": {
+                        "name": "Alphabet Inc.",
+                        "dba": "Google",
+                        "ein": "641234567",
+                        "owners": [],
+                    },
+                    "address": {
+                        "line1": "1600 Amphitheatre Parkway",
+                        "line2": None,
+                        "city": "Mountain View",
+                        "state": "CA",
+                        "zip": "94043",
+                    },
+                },
+            },
+            "payees": {
+                "method": MethodService.create_account,
+                "payload": {
+                    "holder_id": "ent_au22b1fbFJbp8",
+                    "liability": {"mch_id": "mch_2", "number": "1122334455"},
+                },
+            },
+            "payor_account": {
+                "method": MethodService.create_account,
+                "payload": {
+                    "holder_id": "ent_y1a9e1fbnJ1f3",
+                    "ach": {
+                        "routing": "367537407",
+                        "number": "57838927",
+                        "type": "checking",
+                    },
+                },
+            },
+        }
 
-    @staticmethod
-    def create_payment_and_notify(data: Payment, batch_id: str):
-        collection = db["payments"]
-        data = data.dict()
-        data["batch_id"] = batch_id  # Associate the batch_id with the payment record
+        # Extract method and payload based on collection_name
+        collection_info = collection_map.get(collection_name)
+        if not collection_info:
+            raise ValueError(f"Unknown collection_name: {collection_name}")
 
-        # Insert data to MongoDB
-        result = collection.insert_one(data)
+        # Call the appropriate service method
+        response = collection_info["method"](collection_info["payload"])
+        status = response.get("status")
+        id = response.get("id")
 
-        # Notify the third-party API only if the record was successfully created
-        if result.inserted_id:
-            status = DataService.call_third_party_api(data)
-            # Update the payment document with the API call status
-            collection.update_one(
-                {"_id": result.inserted_id}, {"$set": {"api_status": status}}
+        return status, id
+
+    def upsert_record(self, data: BaseModel, collection_name: str):
+        collection = self.db[collection_name]
+        filter_criteria = self._get_collection_filter(data, collection_name)
+
+        existing_data = collection.find_one(filter_criteria)
+        updated_data = collection.find_one_and_update(
+            filter_criteria, {"$set": data.dict()}, upsert=True, return_document=True
+        )
+
+        # If new record, notify third-party API
+        if not existing_data:
+            external_status, external_id = self.call_third_party_api(
+                data, collection_name
+            )
+            updated_data["external_status"] = external_status
+            updated_data["external_id"] = external_id
+
+            collection.replace_one(
+                {"_id": updated_data["_id"]}, updated_data, upsert=True
             )
 
-    @staticmethod
-    def upsert_and_notify(data: BaseModel, collection_name: str):
-        collection = db[collection_name]
+        return updated_data["_id"]
 
-        if collection_name == "payments":
-            criteria = {
-                "employee.DunkinId": data.employee.DunkinId,
-                "payor.DunkinId": data.payor.DunkinId,
-                "payee.PlaidId": data.payee.PlaidId,
-            }
-        else:
-            criteria = {
-                "DunkinId": data.DunkinId if hasattr(data, "DunkinId") else data.PlaidId
-            }
+    def create_payment_record(self, data: Payment, batch_id: str):
+        collection = self.db["payments"]
+        data_dict = data.dict()
+        data_dict["batch_id"] = batch_id
 
-        values = {"$set": data.dict()}
+        collection.insert_one(data_dict)
 
-        # Upsert data to MongoDB
-        result = collection.update_one(criteria, values, upsert=True)
-
-        # Notify the third-party API
-        status = DataService.call_third_party_api(data)
-
-        # Update the document with the API call status
-        if result.upserted_id or result.matched_count > 0:
-            collection.update_one(criteria, {"$set": {"api_status": status}})
-
-    @classmethod
-    def process_xml(cls, xml_content: str):
-        # First, save the batch and get its ID
-
+    def process_xml(self, xml_content: str):
         data = xmltodict.parse(xml_content)
-        batch_id = DataService.save_batch_file(data)
+        batch_id = self.save_batch_file(data)
         rows = data.get("root", {}).get("row", [])
-        if not isinstance(rows, list):  # Handle when there's a single row
-            rows = [rows]
+        rows = [rows] if not isinstance(rows, list) else rows
 
         for row in rows:
-            employee = Employee(**row["Employee"])
-            payor = Payor(**row["Payor"])
-            payee = Payee(**row["Payee"])
-            amount = float(
-                row["Amount"].replace("$", "")
-            )  # Convert string amount to float
+            row = self._recursive_snake_case(row)
+            employee = Employee(**row["employee"])
+            payor = Payor(**row["payor"])
+            payee = Payee(**row["payee"])
+            amount = float(row["amount"].replace("$", ""))
 
-            payment_data = Payment(
-                employee=employee, payor=payor, payee=payee, amount=amount
+            payor_id = self.upsert_record(payor, "payors")
+            payor_account = PayorAccount(
+                aba_routing=row["payor"]["aba_routing"],
+                account_number=row["payor"]["account_number"],
+                payor_id=payor_id,
             )
 
-            cls.upsert_and_notify(employee, "employees")
-            cls.upsert_and_notify(payor, "payors")
-            cls.upsert_and_notify(payee, "payees")
-            cls.create_payment_and_notify(payment_data, batch_id)
+            # Create Payment instance using snake_case
+            payment_data = Payment(
+                employee=employee,
+                payor_account=payor_account,
+                payee=payee,
+                amount=amount,
+                batch_id=batch_id,
+            )
 
-    @classmethod
-    def upsert_employee(cls, data: Employee):
-        """Upsert employee data."""
-        collection = db["employees"]
-        criteria = {"_id": data.DunkinId}
-        document = data.dict(by_alias=True)
-        # Upsert operation.
-        collection.update_one(criteria, {"$set": document}, upsert=True)
+            # Upsert all data entities
+            for entity, collection_name in [
+                (payor_account, "payor_account"),
+                (employee, "employees"),
+                (payee, "payees"),
+            ]:
+                self.upsert_record(entity, collection_name)
 
-    @classmethod
-    def upsert_payor(cls, data: Payor):
-        """Upsert payor data."""
-        collection = db["payors"]
-        criteria = {"_id": data.DunkinId}
-        document = data.dict(by_alias=True)
-        # Upsert operation.
-        collection.update_one(criteria, {"$set": document}, upsert=True)
+            self.create_payment_record(payment_data, batch_id)
 
-    @classmethod
-    def upsert_payee(cls, data: Payee):
-        """Upsert payee data."""
-        collection = db["payees"]
-        criteria = {"_id": data.PlaidId}
-        document = data.dict(by_alias=True)
-        # Upsert operation.
-        collection.update_one(criteria, {"$set": document}, upsert=True)
+    def process_payments_for_batch(self, batch_id: str):
+        # Fetch all payments associated with the batch_id
+        payments = list(self.payments_collection.find({"batch_id": batch_id}))
+
+        # For each payment, make the API call and update the payment record with the response
+        for payment in payments:
+            response = MethodService.process_payment(payment)
+            updated_data = {
+                "external_id": response["id"],
+                "external_status": response["status"],
+                "payment_metadata": response["payload"],
+            }
+            self.payments_collection.update_one(
+                {"_id": payment["_id"]}, {"$set": updated_data}
+            )
 
     @staticmethod
-    def upsert_payment(data: Payment):
-        collection = db["payments"]
-        # The criteria here can be more comprehensive depending on your requirements.
-        # For simplicity, we use the combination of all associated IDs to find a unique payment.
-        criteria = {
-            "employee.DunkinId": data.employee.DunkinId,
-            "payor.DunkinId": data.payor.DunkinId,
-            "payee.PlaidId": data.payee.PlaidId,
-        }
-        values = {"$set": data.dict()}
-        # TODO: do we need to update this to account for multiple payments?
-        collection.update_one(criteria, values, upsert=True)
+    def to_snake_case(string: str) -> str:
+        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", string)
+        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+    def _recursive_snake_case(self, data: dict) -> dict:
+        """Recursively convert the keys of the dictionary to snake_case."""
+        new_data = {}
+        for key, value in data.items():
+            snake_key = self.to_snake_case(key)
+            if isinstance(value, dict):
+                new_data[snake_key] = self._recursive_snake_case(value)
+            else:
+                new_data[snake_key] = value
+        return new_data

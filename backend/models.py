@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class BatchFile(BaseModel):
@@ -7,38 +7,42 @@ class BatchFile(BaseModel):
 
 
 class Employee(BaseModel):
-    DunkinId: str
-    DunkinBranch: str
-    FirstName: str
-    LastName: str
-    DOB: str
-    PhoneNumber: str
+    dunkin_id: str
+    dunkin_branch: str
+    first_name: str
+    last_name: str
+    dob: str
+    phone_number: str
 
 
 class Address(BaseModel):
-    Line1: str
-    City: str
-    State: str
-    Zip: str
+    line1: str
+    city: str
+    state: str
+    zip: str
 
 
 class Payor(BaseModel):
-    DunkinId: str
-    ABARouting: str
-    AccountNumber: str
-    Name: str
-    DBA: str
-    EIN: str
-    Address: Address
+    dunkin_id: str
+    name: str
+    dba: str
+    ein: str
+    address: Address
+
+
+class PayorAccount(BaseModel):
+    aba_routing: str
+    account_number: str
+    payor_id: object  # The MongoDB ObjectId of the associated Payor
 
 
 class Payee(BaseModel):
-    PlaidId: str
-    LoanAccountNumber: str
+    plaid_id: str
+    loan_account_number: str
 
 
 class Payment(BaseModel):
     employee: Employee
-    payor: Payor
+    payor_account: PayorAccount
     payee: Payee
     amount: float
