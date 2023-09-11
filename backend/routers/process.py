@@ -14,8 +14,8 @@ async def upload_xml(file: UploadFile):
     return {"status": "success"}
 
 
-@app.post("/make_payments")
-def make_payments():
+@app.post("/authorize_payments")
+def authorize_payments():
     # all_payouts = payouts_collection.find({})
     # for payout in all_payouts:
     #     make_payment(Payout(**payout))

@@ -13,6 +13,8 @@ class Employee(BaseModel):
     last_name: str
     dob: str
     phone_number: str
+    external_status: Optional[str]
+    external_id: Optional[str]
 
 
 class Address(BaseModel):
@@ -20,6 +22,8 @@ class Address(BaseModel):
     city: str
     state: str
     zip: str
+    external_status: Optional[str]
+    external_id: Optional[str]
 
 
 class Payor(BaseModel):
@@ -28,17 +32,25 @@ class Payor(BaseModel):
     dba: str
     ein: str
     address: Address
+    external_status: Optional[str]
+    external_id: Optional[str]
 
 
 class PayorAccount(BaseModel):
     aba_routing: str
     account_number: str
-    payor_id: object  # The MongoDB ObjectId of the associated Payor
+    payor_record: Payor  # The MongoDB ObjectId of the associated Payor
+    external_status: Optional[str]
+    external_id: Optional[str]
 
 
 class Payee(BaseModel):
     plaid_id: str
     loan_account_number: str
+    merchant: Optional[object]
+    employee_record: Optional[Employee]
+    external_status: Optional[str]
+    external_id: Optional[str]
 
 
 class Payment(BaseModel):
@@ -46,3 +58,5 @@ class Payment(BaseModel):
     payor_account: PayorAccount
     payee: Payee
     amount: float
+    external_status: Optional[str]
+    external_id: Optional[str]

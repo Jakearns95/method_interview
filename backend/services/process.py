@@ -1,9 +1,16 @@
+from typing import Optional
+from builders.process import PayloadBuilder
 from services.method import MethodService
 from models import Employee, Payee, Payor, Payment, BatchFile, PayorAccount
 import xmltodict
 import re
 from pymongo import MongoClient
 from pydantic import BaseModel
+import os
+from dotenv import load_dotenv
+
+load_dotenv(".env.localdev")
+DB_URL = os.environ.get("DB_URL")
 
 # Things to do
 # Create db session function
@@ -39,7 +46,7 @@ xml_content = """
             </Address>
         </Payor>
         <Payee>
-            <PlaidId>ins_116248</PlaidId>
+            <PlaidId>ins_114108</PlaidId>
             <LoanAccountNumber>04807469</LoanAccountNumber>
         </Payee>
         <Amount>$8.15</Amount>
@@ -168,10 +175,10 @@ class DataService:
     def __init__(self):
         self._initialize_database_connection()
         self.payments_collection = self.db["payments"]
+        self.merchants_collection = self.db["merchants"]
 
     def _initialize_database_connection(self):
-        connection_string = "ENV VAR"
-        self.client = MongoClient(connection_string, 27017)
+        self.client = MongoClient(DB_URL, 27017)
         self.db = self.client["dunkin_database"]
 
     @staticmethod
@@ -189,71 +196,69 @@ class DataService:
 
     def save_batch_file(self, xml_content: dict) -> str:
         batch = BatchFile(content=xml_content)
-        return self.db["batch_files"].insert_one(batch.dict()).inserted_id
+        batch_id = self.db["batch_files"].insert_one(batch.dict()).inserted_id
+
+        # After creating batch file, fetch and store merchant data
+        self._update_merchants()
+
+        return batch_id
+
+    def _update_merchants(self):
+        """Retrieve all merchants using MethodService and update the single merchant document."""
+        merchants_data = MethodService.get_merchants()
+
+        # Using a static unique identifier for the merchant data record.
+        # This ensures we are always updating the same record.
+        merchant_record_identifier = "unique_merchant_record"
+
+        self.merchants_collection.update_one(
+            {"record_id": merchant_record_identifier},
+            {"$set": {"data": merchants_data}},
+            upsert=True,
+        )
+
+    def _find_merchant_by_plaid_id(self, plaid_id: str) -> Optional[dict]:
+        """Return the merchant associated with the given plaid_id."""
+        merchant_record_identifier = "unique_merchant_record"
+        merchant_document = self.merchants_collection.find_one(
+            {"record_id": merchant_record_identifier}
+        )
+
+        if not merchant_document:
+            return None
+
+        for merchant in merchant_document.get("data", []):
+            if plaid_id in merchant.get("provider_ids", {}).get("plaid", []):
+                return merchant
+        return None
 
     @staticmethod
     def call_third_party_api(data: BaseModel, collection_name: str):
-        collection_map = {
+        method_map = {
             "employees": {
                 "method": MethodService.create_entity,
-                "payload": {
-                    "type": "individual",
-                    "individual": {
-                        "first_name": "Kevin",
-                        "last_name": "Doyle",
-                        "phone": "+16505555555",
-                        "email": "kevin.doyle@gmail.com",
-                        "dob": "1997-03-18",
-                    },
-                    "address": {},
-                },
+                "payload_fn": PayloadBuilder.build_employee_payload,
             },
             "payors": {
                 "method": MethodService.create_entity,
-                "payload": {
-                    "type": "c_corporation",
-                    "corporation": {
-                        "name": "Alphabet Inc.",
-                        "dba": "Google",
-                        "ein": "641234567",
-                        "owners": [],
-                    },
-                    "address": {
-                        "line1": "1600 Amphitheatre Parkway",
-                        "line2": None,
-                        "city": "Mountain View",
-                        "state": "CA",
-                        "zip": "94043",
-                    },
-                },
+                "payload_fn": PayloadBuilder.build_payor_payload,
             },
             "payees": {
                 "method": MethodService.create_account,
-                "payload": {
-                    "holder_id": "ent_au22b1fbFJbp8",
-                    "liability": {"mch_id": "mch_2", "number": "1122334455"},
-                },
+                "payload_fn": PayloadBuilder.build_payee_payload,
             },
             "payor_account": {
                 "method": MethodService.create_account,
-                "payload": {
-                    "holder_id": "ent_y1a9e1fbnJ1f3",
-                    "ach": {
-                        "routing": "367537407",
-                        "number": "57838927",
-                        "type": "checking",
-                    },
-                },
+                "payload_fn": PayloadBuilder.build_payor_account_payload,
             },
         }
 
-        # Extract method and payload based on collection_name
-        collection_info = collection_map.get(collection_name)
+        collection_info = method_map.get(collection_name)
         if not collection_info:
             raise ValueError(f"Unknown collection_name: {collection_name}")
 
-        # Call the appropriate service method
-        response = collection_info["method"](collection_info["payload"])
+        payload = collection_info["payload_fn"](data)
+        response = collection_info["method"](payload)
         status = response.get("status")
         id = response.get("id")
 
@@ -268,6 +273,14 @@ class DataService:
             filter_criteria, {"$set": data.dict()}, upsert=True, return_document=True
         )
 
+        if collection_name == "payees" and hasattr(data, "plaid_id"):
+            merchant_data = self._find_merchant_by_plaid_id(data.plaid_id)
+            if merchant_data:
+                updated_data["merchant"] = merchant_data
+                collection.replace_one(
+                    {"_id": updated_data["_id"]}, updated_data, upsert=True
+                )
+
         # If new record, notify third-party API
         if not existing_data:
             external_status, external_id = self.call_third_party_api(
@@ -280,7 +293,7 @@ class DataService:
                 {"_id": updated_data["_id"]}, updated_data, upsert=True
             )
 
-        return updated_data["_id"]
+        return updated_data
 
     def create_payment_record(self, data: Payment, batch_id: str):
         collection = self.db["payments"]
@@ -298,15 +311,17 @@ class DataService:
         for row in rows:
             row = self._recursive_snake_case(row)
             employee = Employee(**row["employee"])
+            employee_record = self.upsert_record(employee, "employees")
+            print("employee record: ", employee_record)
             payor = Payor(**row["payor"])
-            payee = Payee(**row["payee"])
+            payee = Payee(**row["payee"], employee_record=employee_record)
             amount = float(row["amount"].replace("$", ""))
 
-            payor_id = self.upsert_record(payor, "payors")
+            payor_record = self.upsert_record(payor, "payors")
             payor_account = PayorAccount(
                 aba_routing=row["payor"]["aba_routing"],
                 account_number=row["payor"]["account_number"],
-                payor_id=payor_id,
+                payor_record=payor_record,
             )
 
             # Create Payment instance using snake_case
@@ -321,7 +336,6 @@ class DataService:
             # Upsert all data entities
             for entity, collection_name in [
                 (payor_account, "payor_account"),
-                (employee, "employees"),
                 (payee, "payees"),
             ]:
                 self.upsert_record(entity, collection_name)
