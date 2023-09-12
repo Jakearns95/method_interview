@@ -1,24 +1,30 @@
-from typing import Optional
-from builders.process import PayloadBuilder
-from services.method import MethodService
-from models import Employee, Payee, Payor, Payment, BatchFile, PayorAccount
-import xmltodict
-import re
-from pymongo import MongoClient
-from pydantic import BaseModel
+import json
 import os
+import re
+from typing import Any, List, Optional
+
+import xmltodict
+from bson import ObjectId
+from bson.objectid import ObjectId
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from pymongo import MongoClient
+
+from builders.process import PayloadBuilder
+from models import BatchFile, Employee, Payee, Payment, Payor, PayorAccount
+from services.method import MethodService
+from utils.logging import init_logger
+
+logger = init_logger(__name__)
 
 load_dotenv(".env.localdev")
 DB_URL = os.environ.get("DB_URL")
 
 # Things to do
 # Create db session function
-# Create way to get correct payee information by merchant - filter by plaid id
-# Create api calls for each type of model - look into breaking up payor
-# Hard code phone number
 # create workers to handle rate limiting and background tasks with retry logic
 # create endpoints for querying data
+
 
 xml_content = """
     <root>
@@ -171,6 +177,14 @@ xml_content = """
     """
 
 
+# TODO move later
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, ObjectId):
+            return str(o)
+        return json.JSONEncoder.default(self, o)
+
+
 class DataService:
     def __init__(self):
         self._initialize_database_connection()
@@ -282,16 +296,20 @@ class DataService:
                 )
 
         # If new record, notify third-party API
+        # If we fail to make an API call, no user is created
         if not existing_data:
-            external_status, external_id = self.call_third_party_api(
-                data, collection_name
-            )
-            updated_data["external_status"] = external_status
-            updated_data["external_id"] = external_id
+            try:
+                external_status, external_id = self.call_third_party_api(
+                    updated_data, collection_name
+                )
+                updated_data["external_status"] = external_status
+                updated_data["external_id"] = external_id
 
-            collection.replace_one(
-                {"_id": updated_data["_id"]}, updated_data, upsert=True
-            )
+                collection.replace_one(
+                    {"_id": updated_data["_id"]}, updated_data, upsert=True
+                )
+            except ValueError as e:
+                logger.exception(e)
 
         return updated_data
 
@@ -302,61 +320,74 @@ class DataService:
 
         collection.insert_one(data_dict)
 
-    def process_xml(self, xml_content: str):
-        data = xmltodict.parse(xml_content)
-        batch_id = self.save_batch_file(data)
-        rows = data.get("root", {}).get("row", [])
-        rows = [rows] if not isinstance(rows, list) else rows
+    def process_xml(self, xml_content: str) -> List:
+        try:
+            data = xmltodict.parse(xml_content)
+            batch_id = self.save_batch_file(data)
+            rows = data.get("root", {}).get("row", [])
+            rows = [rows] if not isinstance(rows, list) else rows
 
-        for row in rows:
-            row = self._recursive_snake_case(row)
-            employee = Employee(**row["employee"])
-            employee_record = self.upsert_record(employee, "employees")
-            print("employee record: ", employee_record)
-            payor = Payor(**row["payor"])
-            payee = Payee(**row["payee"], employee_record=employee_record)
-            amount = float(row["amount"].replace("$", ""))
+            for row in rows:
+                row = self._recursive_snake_case(row)
+                employee = Employee(**row["employee"])
+                employee_record = self.upsert_record(employee, "employees")
+                payor = Payor(**row["payor"])
+                payee = Payee(**row["payee"], employee_record=employee_record)
+                amount = float(row["amount"].replace("$", "")) * 100
 
-            payor_record = self.upsert_record(payor, "payors")
-            payor_account = PayorAccount(
-                aba_routing=row["payor"]["aba_routing"],
-                account_number=row["payor"]["account_number"],
-                payor_record=payor_record,
-            )
+                payor_record = self.upsert_record(payor, "payors")
+                payor_account = PayorAccount(
+                    aba_routing=row["payor"]["aba_routing"],
+                    account_number=row["payor"]["account_number"],
+                    payor_record=payor_record,
+                )
+                payor_account_record = self.upsert_record(
+                    payor_account, "payor_account"
+                )
+                payee_record = self.upsert_record(payee, "payees")
 
-            # Create Payment instance using snake_case
-            payment_data = Payment(
-                employee=employee,
-                payor_account=payor_account,
-                payee=payee,
-                amount=amount,
-                batch_id=batch_id,
-            )
+                # if there is an incorrect merchant, skip a payment record
+                if payee_record.get("merchant") is not None:
+                    # Create Payment instance using snake_case
+                    payment_data = Payment(
+                        employee=employee,
+                        payor_account=payor_account_record,
+                        payee=payee_record,
+                        amount_cents=amount,
+                        batch_id=batch_id,
+                    )
 
-            # Upsert all data entities
-            for entity, collection_name in [
-                (payor_account, "payor_account"),
-                (payee, "payees"),
-            ]:
-                self.upsert_record(entity, collection_name)
+                    self.create_payment_record(payment_data, batch_id)
 
-            self.create_payment_record(payment_data, batch_id)
+                # TODO: reformat and move later
+                pending_payments = self.get_all_payments(batch_id)
+                serialized_data = JSONEncoder().encode(pending_payments)
+
+                # Convert the serialized string back to a Python dictionary.
+                return json.loads(serialized_data)
+        except Exception as e:
+            logger.exception(e)
 
     def process_payments_for_batch(self, batch_id: str):
         # Fetch all payments associated with the batch_id
-        payments = list(self.payments_collection.find({"batch_id": batch_id}))
+        payments = self.get_all_payments(batch_id)
 
         # For each payment, make the API call and update the payment record with the response
         for payment in payments:
-            response = MethodService.process_payment(payment)
-            updated_data = {
-                "external_id": response["id"],
-                "external_status": response["status"],
-                "payment_metadata": response["payload"],
-            }
-            self.payments_collection.update_one(
-                {"_id": payment["_id"]}, {"$set": updated_data}
-            )
+            try:
+                payload = PayloadBuilder.build_payment_payload(payment)
+                response = MethodService.process_payment(payload)
+                updated_data = {
+                    "external_id": response["id"],
+                    "external_status": response["status"],
+                    "payment_metadata": response,
+                }
+                self.payments_collection.update_one(
+                    {"_id": payment["_id"]}, {"$set": updated_data}
+                )
+            except Exception as e:
+                logger.exception(e)
+                continue
 
     @staticmethod
     def to_snake_case(string: str) -> str:
@@ -373,3 +404,6 @@ class DataService:
             else:
                 new_data[snake_key] = value
         return new_data
+
+    def get_all_payments(self, batch_id: str) -> List:
+        return list(self.payments_collection.find({"batch_id": ObjectId(batch_id)}))

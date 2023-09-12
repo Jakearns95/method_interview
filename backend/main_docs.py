@@ -53,4 +53,3 @@ def get_redoc_documentation(username: str = Depends(use_basic_auth)):
 @docs_app.get("/openapi.json", include_in_schema=False)
 def openapi(username: str = Depends(use_basic_auth)):
     return get_openapi(title="openapi", version=app.version, routes=app.routes)
-

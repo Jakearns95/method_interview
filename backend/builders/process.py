@@ -1,29 +1,30 @@
+from models import Payment
 from utils.formating import convert_to_iso8601
-from models import Employee, Payor, Payee, Payment, PayorAccount
 
 
 # TODO: rename
+# TODO: add statictyping later
 class PayloadBuilder:
     @staticmethod
-    def build_employee_payload(data: Employee) -> dict:
+    def build_employee_payload(data: dict) -> dict:
         return {
             "type": "individual",
             "individual": {
-                "first_name": data.first_name,
-                "last_name": data.last_name,
+                "first_name": data.get("first_name", ""),
+                "last_name": data.get("last_name", ""),
                 "phone": "+15121231111",
-                "dob": convert_to_iso8601(data.dob),
+                "dob": convert_to_iso8601(data.get("dob", "")),
             },
         }
 
     @staticmethod
-    def build_payor_payload(data: Payor) -> dict:
+    def build_payor_payload(data: dict) -> dict:
         return {
             "type": "c_corporation",
             "corporation": {
-                "name": data.name,
-                "dba": data.dba,
-                "ein": data.ein,
+                "name": data.get("name", ""),
+                "dba": data.get("dba", ""),
+                "ein": data.get("ein", ""),
             },
             "address": {
                 "line1": "3300 N Interstate 35",
@@ -44,24 +45,33 @@ class PayloadBuilder:
         }
 
     @staticmethod
-    def build_payee_payload(data: Payee) -> dict:
-        if data.merchant is not None:
+    def build_payee_payload(data: dict) -> dict:
+        if data.get("merchant") is not None:
             return {
-                "holder_id": data.employee_record.external_id,
+                "holder_id": data.get("employee_record", {}).get("external_id", ""),
                 "liability": {
-                    "mch_id": data.merchant.mch_id,
-                    "number": data.loan_account_number,
+                    "mch_id": data.get("merchant", {}).get("mch_id", ""),
+                    "number": data.get("loan_account_number", ""),
                 },
             }
         return {}
 
     @staticmethod
-    def build_payor_account_payload(data: PayorAccount) -> dict:
+    def build_payor_account_payload(data: dict) -> dict:
         return {
-            "holder_id": data.payor_record.external_id,
+            "holder_id": data.get("payor_record", {}).get("external_id", ""),
             "ach": {
-                "routing": data.aba_routing,
-                "number": data.account_number,
+                "routing": data.get("aba_routing", ""),
+                "number": data.get("account_number", ""),
                 "type": "checking",
             },
+        }
+
+    @staticmethod
+    def build_payment_payload(data: Payment):
+        return {
+            "amount": data["amount_cents"],
+            "source": data["payor_account"]["external_id"],
+            "destination": data["payee"]["external_id"],
+            "description": "Loan Pmt",
         }

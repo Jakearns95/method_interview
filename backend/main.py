@@ -1,14 +1,17 @@
+from multiprocessing import process
+
 from dotenv import find_dotenv, load_dotenv
 
 # place at top so env vars cascade to all imports below
 load_dotenv(find_dotenv(".env.localdev"))
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from routers import users
-import os
 
+from routers import process
 
 DB_URL = os.environ.get("DB_URL")
 DB_NAME = os.environ.get("DB_NAME")
@@ -38,7 +41,7 @@ app.add_middleware(
 #     app.mongodb_client.close()
 
 
-app.include_router(users.public_router)
+app.include_router(process.public_router)
 
 
 @app.get("/")

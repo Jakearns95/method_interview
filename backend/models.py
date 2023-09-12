@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 from typing import Any, Dict, Optional
+
+from pydantic import BaseModel
 
 
 class BatchFile(BaseModel):
@@ -57,6 +58,6 @@ class Payment(BaseModel):
     employee: Employee
     payor_account: PayorAccount
     payee: Payee
-    amount: float
+    amount_cents: int
     external_status: Optional[str]
     external_id: Optional[str]

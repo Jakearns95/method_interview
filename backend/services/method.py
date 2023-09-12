@@ -1,16 +1,17 @@
-from method import Method
-import requests
-
-import os
-from dotenv import load_dotenv
-from utils.logging import init_logger
 import json
+import os
+
+import requests
+from dotenv import load_dotenv
+from method import Method
+
+from utils.logging import init_logger
 
 logger = init_logger(__name__)
 load_dotenv(".env.localdev")
 API_KEY = os.environ.get("METHOD_API_LEY")
 method = Method(env="dev", api_key=API_KEY)
-url = "https://dev.methodfi.com/accounts"
+
 
 headers = {
     "Authorization": f"Bearer {API_KEY}",
@@ -18,37 +19,50 @@ headers = {
 }
 
 
+# TODO: look into using package - having trouble with error handling/logging
 class MethodService:
-    @classmethod
-    def create_entity(cls, payload: dict):
-        """This will create the entity for both individuals and corporations"""
-        try:
-            entity = method.entities.create(payload)
+    BASE_URL = "https://dev.methodfi.com"
+    HEADERS = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    }
 
-            return entity
-        except Exception as e:
-            print(f"Error occurred: {e}")
+    @classmethod
+    def _send_request(cls, endpoint: str, payload: dict):
+        """Helper method to send a POST request and return the data."""
+        try:
+            response = requests.post(
+                f"{cls.BASE_URL}/{endpoint}",
+                headers=cls.HEADERS,
+                data=json.dumps(payload),
+            )
+            # response.raise_for_status()  # Raise an HTTPError if the response contains an HTTP error status code.
+            return response.json().get("data")
+        except requests.RequestException as e:
+            logger.exception(f"Error occurred when sending request to {endpoint}: {e}")
             raise e
 
     @classmethod
-    def create_account(cls, payload: dict):
-        """This will create the bank and liability accounts for both debits and credits"""
-        print(payload)
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
+    def create_entity(cls, payload: dict):
+        """This will create the entity for both individuals and corporations."""
+        return cls._send_request("entities", payload)
 
-        print(response.status_code)
-        print(response.json())
-        # account = method.accounts.create(payload)
-        return {"status": "success", "id": 1}
+    @classmethod
+    def create_account(cls, payload: dict):
+        """This will create the bank and liability accounts for both debits and credits."""
+        return cls._send_request("accounts", payload)
 
     @classmethod
     def get_merchants(cls):
-        """This will retrieve all the merchants in methods db"""
-        merchants = method.merchants.list()
-        return merchants
+        """This will retrieve all the merchants in methods db."""
+        try:
+            merchants = method.merchants.list()
+            return merchants
+        except Exception as e:
+            logger.exception(f"Error occurred when retrieving merchants: {e}")
+            raise e
 
-    @staticmethod
-    def process_payment(payment: dict) -> dict:
-        # Logic to call the third-party API with the payment data
-        # payment = method.payments.create(payment)
-        return {"status": "success", "id": 1}
+    @classmethod
+    def process_payment(cls, payment: dict) -> dict:
+        """Logic to call the third-party API with the payment data."""
+        return cls._send_request("payments", payment)

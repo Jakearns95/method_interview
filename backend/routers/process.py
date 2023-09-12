@@ -1,23 +1,36 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+import json
+
+from fastapi import FastAPI, HTTPException, Response, status
+from pydantic import BaseModel
+
 from services.process import DataService
+from utils.routing import public_router
 
 app = FastAPI()
+public_router = public_router(tags=["process"])
 
 
-@app.post("/upload_xml")
-async def upload_xml(file: UploadFile):
-    # xml_content = await file.read()
-    # payouts = parse_xml(xml_content)
-
-    # save_payouts_to_db(payouts)
-
-    return {"status": "success"}
+class XMLPayload(BaseModel):
+    data: str
 
 
-@app.post("/authorize_payments")
-def authorize_payments():
-    # all_payouts = payouts_collection.find({})
-    # for payout in all_payouts:
-    #     make_payment(Payout(**payout))
+@public_router.post("/upload_xml")
+def upload_xml(payload: XMLPayload):
+    try:
+        payments = DataService().process_xml(payload.data)
 
-    return {"status": "payments made"}
+        # TODO: create builder for json api spec responses
+        return payments
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@public_router.post("/authorize_payments")
+def authorize_payments(
+    batch_id: str,
+):
+    try:
+        DataService().process_payments_for_batch(batch_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
