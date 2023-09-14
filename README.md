@@ -43,18 +43,18 @@
 
 4. **Frontend Setup**:
 
-- Navigate to `/frontend`
+   - Navigate to `/frontend`
 
-- Install Dependencies:
+   - Install Dependencies:
 
-  ```bash
-  yarn install
-  ```
+     ```bash
+     yarn install
+     ```
 
-- Start the Development Server:
-  ```bash
-  yarn run dev
-  ```
+   - Start the Development Server:
+     ```bash
+     yarn run dev
+     ```
 
 ## Potential Improvements:
 
