@@ -51,28 +51,48 @@
 
 ## Potential Improvements:
 
-### Frontend:
+## Frontend:
 
-- **Statictyping/interfaces for API calls:** Ensuring that all data from and to the API has a predictable shape will improve the reliability of the frontend code.
+- **Static Typing and Interfaces for API Calls**:
 
-- **Service class for API calls and base API layer:** This provides a centralized place for all API related operations, making the codebase cleaner and more maintainable.
+  - Introduce static typing and interfaces to make sure data interacting with the API is consistent. This enhances the frontend's robustness.
 
-- **Adding proper layouts and folder structures:** Organizing the frontend resources into logical folders can improve code maintainability and make it easier for new developers to understand the structure.
+- **Service Class for API Calls & Base API Layer**:
 
-### Backend:
+  - Centralize all API operations within a dedicated service class, streamlining the code and simplifying maintenance.
 
-- **Lacking static typing:** Implementing static typing can catch potential bugs early in the development process and improve code quality.
+- **Structured Layouts and Folder Organization**:
+  - Strategically structure frontend assets in intuitive folders. This fosters better maintainability and aids newcomers in navigating the codebase.
 
-- **Pedantic objects and JSON API spec responses in builders:** Ensuring the response shape and type can be crucial for frontend-backend compatibility and for adhering to certain API standards.
+## Backend:
 
-- **Background jobs to handle retries and rate limiting:** This will ensure that the backend can handle large amounts of traffic and requests without overloading the system.
+- **Static Typing**:
 
-- **Webhook service to capture updates from API:** This can be useful for real-time data syncing and capturing events triggered by other services.
+  - Adopt static typing to preemptively detect bugs, elevating code quality.
 
-- **Used requests instead of Method python package:** Switching to a more modern package or one that fits the use case better can improve performance and reliability.
+- **Pedantic Objects & JSON API Spec in Builders**:
 
-- **Missing any form of testing:** Implementing unit, integration, and end-to-end tests ensures that the backend functions as expected and makes refactoring safer.
+  - Standardize response formats to ensure harmony between the frontend and backend, and to align with API best practices.
 
-- **Proper naming of functions:** Naming functions clearly and consistently makes the codebase more readable and maintainable.
+- **Background Job Management**:
 
-- **Increased data validation - payments require correct plaid ids for lookup against merchants:** Ensuring all data input is validated properly can prevent many potential issues down the line.
+  - Introduce background jobs for retry mechanisms and rate limiting. This ensures efficient handling of traffic surges without system overload.
+
+- **Webhook Services for API Updates**:
+
+  - Implement webhooks to seamlessly synchronize real-time data and capture events instigated by external services.
+
+- **Optimal Package Usage**:
+
+  - Consider transitioning from 'requests' to the 'Method' python package or another modern alternative for better performance and reliability.
+
+- **Testing**:
+
+  - Introduce diverse testing layers (unit, integration, end-to-end) to verify backend operations, ensuring functionality and facilitating safer code refactoring.
+
+- **Function Naming Convention**:
+
+  - Opt for clear and consistent function names to enhance code readability and maintainability.
+
+- **Rigorous Data Validation**:
+  - Strengthen data validation processes, especially for payments, to ensure the accuracy of Plaid IDs when cross-referencing with merchants.
