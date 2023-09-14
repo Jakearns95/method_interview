@@ -5,6 +5,8 @@ from utils.formating import convert_to_iso8601
 # TODO: rename
 # TODO: add statictyping and pydantic objects later
 class PayloadBuilder:
+    """Class to build all requests for Method calls"""
+
     @staticmethod
     def build_employee_payload(data: dict) -> dict:
         return {

@@ -31,6 +31,8 @@ class JSONEncoder(json.JSONEncoder):
 
 
 class DataService:
+    """Service class to parse xml files, make third party api calls and upsert into DB"""
+
     def __init__(self):
         self._initialize_database_connection()
         self.payments_collection = self.db["payments"]
@@ -42,6 +44,7 @@ class DataService:
 
     @staticmethod
     def _get_collection_filter(data: BaseModel, collection_name: str) -> dict:
+        """Creates a db filter based on primary keys for upserting into the db"""
         filters = {
             "payors": "dunkin_id",
             "employees": "dunkin_id",
@@ -92,7 +95,7 @@ class DataService:
         return None
 
     @staticmethod
-    def call_third_party_api(data: BaseModel, collection_name: str):
+    def create_method_record(data: BaseModel, collection_name: str):
         method_map = {
             "employees": {
                 "method": MethodService.create_entity,
@@ -124,6 +127,9 @@ class DataService:
         return status, id
 
     def upsert_record(self, data: BaseModel, collection_name: str):
+        """For each document type, upsert the record.
+        If the record doesn't exist, make a an api call to update external ID and status
+        """
         collection = self.db[collection_name]
         filter_criteria = self._get_collection_filter(data, collection_name)
 
@@ -141,10 +147,9 @@ class DataService:
                 )
 
         # If new record, notify third-party API
-        # If we fail to make an API call, no user is created
         if not existing_data:
             try:
-                external_status, external_id = self.call_third_party_api(
+                external_status, external_id = self.create_method_record(
                     updated_data, collection_name
                 )
                 updated_data["external_status"] = external_status
@@ -166,21 +171,28 @@ class DataService:
         collection.insert_one(data_dict)
 
     def process_xml(self, xml_content: str) -> List:
+        """Process the XML files and make service function calls to update db and make api calls"""
         try:
+            # Parse XML into a dict
             data = xmltodict.parse(xml_content)
 
             batch_id = self.save_batch_file(data)
             rows = data.get("root", {}).get("row", [])
+
+            # Check if one or more rows exist
             rows = [rows] if not isinstance(rows, list) else rows
 
+            # For each record in the xml file
             for row in rows:
+                # Convert the entire row to snake_case
                 row = self._recursive_snake_case(row)
+
+                # Define and create the employee record
                 employee = Employee(**row["employee"])
                 employee_record = self.upsert_record(employee, "employees")
-                payor = Payor(**row["payor"])
-                payee = Payee(**row["payee"], employee_record=employee_record)
-                amount = float(row["amount"].replace("$", "")) * 100
 
+                # Define Payor (corporation bank details)
+                payor = Payor(**row["payor"])
                 payor_record = self.upsert_record(payor, "payors")
                 payor_account = PayorAccount(
                     aba_routing=row["payor"]["aba_routing"],
@@ -190,9 +202,12 @@ class DataService:
                 payor_account_record = self.upsert_record(
                     payor_account, "payor_account"
                 )
+                # Payee (employee bank details)
+                payee = Payee(**row["payee"], employee_record=employee_record)
+                amount = float(row["amount"].replace("$", "")) * 100
                 payee_record = self.upsert_record(payee, "payees")
 
-                # if there is an incorrect merchant, skip a payment record
+                # If the user provided incorrect merchant/plaid_id, skip a payment record
                 if payee_record.get("merchant") is not None:
                     # Create Payment instance using snake_case
                     payment_data = Payment(
@@ -265,6 +280,7 @@ class DataService:
         return pipeline
 
     def _execute_aggregation(self, pipeline):
+        """reusable function for db aggregation calls"""
         return list(self.payments_collection.aggregate(pipeline))
 
     def get_total_by_corp(self, batch_id=None):
@@ -311,9 +327,9 @@ class DataService:
         )
         return self.convert_json(records)
 
+    # Converts _id objects to proper json to be returned in an API response
     @staticmethod
     def convert_json(data: List):
         serialized_data = JSONEncoder().encode(data)
 
-        # Convert the serialized string back to a Python dictionary.
         return json.loads(serialized_data)

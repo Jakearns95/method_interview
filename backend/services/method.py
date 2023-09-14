@@ -21,6 +21,8 @@ headers = {
 
 # TODO: look into using package - having trouble with error handling/logging
 class MethodService:
+    """Service class for all method related calls"""
+
     BASE_URL = "https://dev.methodfi.com"
     HEADERS = {
         "Authorization": f"Bearer {API_KEY}",

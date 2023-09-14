@@ -18,6 +18,7 @@ class XMLPayload(BaseModel):
 
 @public_router.post("/upload_xml")
 def upload_xml(data: XMLPayload):
+    """Process XML file and return a list of pending payments"""
     try:
         payments = DataService().process_xml(data.payload)
 
@@ -31,6 +32,7 @@ def upload_xml(data: XMLPayload):
 def authorize_payments(
     batch_id: str,
 ):
+    """Process all pending payments associated to a batch file"""
     try:
         DataService().process_payments_for_batch(batch_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -40,6 +42,7 @@ def authorize_payments(
 
 @public_router.get("/batch_files")
 def get_batch_files():
+    """Get all batch files to be displayed to a user"""
     try:
         batch_records = DataService().get_all_batch_records()
         return batch_records
@@ -49,6 +52,8 @@ def get_batch_files():
 
 @public_router.get("/batch_report/{batch_id}")
 def get_batch_report(batch_id: str):
+    """Create 3 csv files that reports payment metrics
+    by branch, corporation and individual payments"""
     try:
         data_service = DataService()
 
