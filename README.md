@@ -6,6 +6,8 @@
 
 1. **Create a Virtual Environment**:
 
+   - ensure you have python 3.9 installed
+
    ```bash
    python3 -m venv venv
    ```
@@ -15,8 +17,6 @@
    ```bash
    source venv/bin/activate
    ```
-
-- Open two terminal windows
 
 3. **Backend Setup**:
 
@@ -44,6 +44,26 @@
      ```
 
 4. **Frontend Setup**:
+
+   Use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) to manage node versions. The version is set in the `.nvmrc` file so you only need to run the following commands:
+
+   ```
+   nvm install
+   nvm use
+   ```
+
+   To test a specific version use the following:
+
+   ```
+   nvm install 18.12.1
+   nvm use 18.12.1
+   ```
+
+   Install Yarn as the Node package manager (note: don't install packages using `npm`)
+
+   ```
+   npm install --global yarn
+   ```
 
    - Navigate to `/frontend`
 
