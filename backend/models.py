@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class BatchFile(BaseModel):
     content: Dict[str, Any]
+    date: str
 
 
 class Employee(BaseModel):

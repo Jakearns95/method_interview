@@ -2,7 +2,7 @@ import json
 import os
 import re
 from typing import Any, List, Optional
-
+from datetime import datetime
 import xmltodict
 from bson import ObjectId
 from bson.objectid import ObjectId
@@ -209,7 +209,7 @@ class DataService:
         return {}
 
     def save_batch_file(self, xml_content: dict) -> str:
-        batch = BatchFile(content=xml_content)
+        batch = BatchFile(content=xml_content, date=datetime.now().strftime("%m-%d-%y"))
         batch_id = self.db["batch_files"].insert_one(batch.dict()).inserted_id
 
         # After creating batch file, fetch and store merchant data
@@ -323,6 +323,7 @@ class DataService:
     def process_xml(self, xml_content: str) -> List:
         try:
             data = xmltodict.parse(xml_content)
+            print("data", data)
             batch_id = self.save_batch_file(data)
             rows = data.get("root", {}).get("row", [])
             rows = [rows] if not isinstance(rows, list) else rows
@@ -359,18 +360,15 @@ class DataService:
 
                     self.create_payment_record(payment_data, batch_id)
 
-                # TODO: reformat and move later
-                pending_payments = self.get_all_payments(batch_id)
-                serialized_data = JSONEncoder().encode(pending_payments)
-
-                # Convert the serialized string back to a Python dictionary.
-                return json.loads(serialized_data)
+            # TODO: reformat and move later
+            pending_payments = self.get_all_payments_by_batch(batch_id)
+            return self.convert_json(pending_payments)
         except Exception as e:
             logger.exception(e)
 
     def process_payments_for_batch(self, batch_id: str):
         # Fetch all payments associated with the batch_id
-        payments = self.get_all_payments(batch_id)
+        payments = self.get_all_payments_by_batch(batch_id)
 
         # For each payment, make the API call and update the payment record with the response
         for payment in payments:
@@ -405,5 +403,73 @@ class DataService:
                 new_data[snake_key] = value
         return new_data
 
-    def get_all_payments(self, batch_id: str) -> List:
+    def get_all_payments_by_batch(self, batch_id: str) -> List:
         return list(self.payments_collection.find({"batch_id": ObjectId(batch_id)}))
+
+    def get_all_batch_records(self) -> List:
+        records = list(self.db["batch_files"].find({}, {"date": 1, "_id": 1}))
+
+        serialized_data = JSONEncoder().encode(records)
+
+        # Convert the serialized string back to a Python dictionary.
+        return json.loads(serialized_data)
+
+    def _build_initial_pipeline(self, batch_id=None):
+        pipeline = []
+        if batch_id:
+            pipeline.append({"$match": {"batch_id": ObjectId(batch_id)}})
+        return pipeline
+
+    def _execute_aggregation(self, pipeline):
+        return list(self.payments_collection.aggregate(pipeline))
+
+    def get_total_by_corp(self, batch_id=None):
+        pipeline = self._build_initial_pipeline(batch_id)
+        pipeline.append(
+            {
+                "$group": {
+                    "_id": "$payor_account.payor_record.dunkin_id",
+                    "total_amount_cents": {"$sum": "$amount_cents"},
+                }
+            }
+        )
+        result = self._execute_aggregation(pipeline)
+        return self.convert_json(result)
+
+    def get_total_by_branch(self, batch_id=None):
+        pipeline = self._build_initial_pipeline(batch_id)
+        pipeline.append(
+            {
+                "$group": {
+                    "_id": "$employee.dunkin_branch",
+                    "total_amount_cents": {"$sum": "$amount_cents"},
+                }
+            }
+        )
+        result = self._execute_aggregation(pipeline)
+        return self.convert_json(result)
+
+    def get_all_payments(self, batch_id=None):
+        filter_criteria = {}
+        if batch_id:
+            filter_criteria["batch_id"] = ObjectId(batch_id)
+
+        records = list(
+            self.payments_collection.find(
+                filter_criteria,
+                {
+                    "_id": 1,
+                    "amount_cents": 1,
+                    "external_status": 1,
+                    "payment_metadata": 1,
+                },
+            )
+        )
+        return self.convert_json(records)
+
+    @staticmethod
+    def convert_json(data: List):
+        serialized_data = JSONEncoder().encode(data)
+
+        # Convert the serialized string back to a Python dictionary.
+        return json.loads(serialized_data)
