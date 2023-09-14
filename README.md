@@ -70,7 +70,7 @@
 
   - Adopt static typing to preemptively detect bugs, elevating code quality.
 
-- **Pedantic Objects & JSON API Spec in Builders**:
+- **Pydantic Objects & JSON API Spec in Builders**:
 
   - Standardize response formats to ensure harmony between the frontend and backend, and to align with API best practices.
 
