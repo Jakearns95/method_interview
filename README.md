@@ -1,5 +1,7 @@
 # Project Environment Setup
 
+[Example Video](https://drive.google.com/file/d/1sierqqyTTh-aZi7sJLQ6Kuw1saCspacP/view?usp=sharing)
+
 ## Steps:
 
 1. **Create a Virtual Environment**:
