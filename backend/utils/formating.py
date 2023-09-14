@@ -1,7 +1,7 @@
-from datetime import datetime
 import csv
+from datetime import datetime
 from io import StringIO
-from typing import List, Dict
+from typing import Dict, List
 
 
 def convert_to_iso8601(dob: str) -> str:
@@ -9,7 +9,6 @@ def convert_to_iso8601(dob: str) -> str:
     date_obj = datetime.strptime(dob, "%m-%d-%Y")
 
     # Return the date in ISO 8601 format
-
     return date_obj.isoformat().split("T")[0]
 
 

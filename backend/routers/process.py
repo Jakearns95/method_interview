@@ -1,12 +1,12 @@
+import zipfile
+from io import BytesIO
+
 from fastapi import FastAPI, HTTPException, Response, status
-from utils.formating import convert_to_csv
 from pydantic import BaseModel
 
-import csv
-from io import StringIO, BytesIO
 from services.process import DataService
+from utils.formating import convert_to_csv
 from utils.routing import public_router
-import zipfile
 
 app = FastAPI()
 public_router = public_router(tags=["process"])

@@ -3,7 +3,7 @@ from utils.formating import convert_to_iso8601
 
 
 # TODO: rename
-# TODO: add statictyping later
+# TODO: add statictyping and pydantic objects later
 class PayloadBuilder:
     @staticmethod
     def build_employee_payload(data: dict) -> dict:
