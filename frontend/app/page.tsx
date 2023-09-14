@@ -13,15 +13,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import * as z from "zod";
-import { Terminal, Waves } from "lucide-react";
-import { Alert, Stack } from "@mui/material";
+import { Alert } from "@mui/material";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
 const FormSchema = z.object({
-  // TODO: require only XML files
+  // Improvement: require only XML files
   file: z.any(),
 });
 
@@ -35,10 +34,12 @@ export default function Test() {
     resolver: zodResolver(FormSchema),
   });
 
-  // TODO: this will need to return a batch ID apart of the payload
+  // Improvement: Convert to one function and streamline
   function onSubmit() {
     submitFile(fileContent);
   }
+
+  // When a file is uploaded, grab the contents and store in state
   function handleFileChange(event: { target: { files: any[] } }) {
     setShowSuccess(false);
 
@@ -58,6 +59,8 @@ export default function Test() {
     }
   }
 
+  // Take file contents and process the XML file.
+  // Response will be a list of pending payments
   async function submitFile(data: any) {
     setLoading(true);
 
@@ -86,12 +89,14 @@ export default function Test() {
     }
   }
 
+  // Using the batch ID, make an api call to process pending payments
   async function processPayments(batch_id: string) {
     console.log("submitting file");
     setLoading(true);
     setShowSuccess(false);
     try {
       const response = await fetch(
+        // URL should be moved to ENV to be dynamic by environment
         `http://localhost:8000/authorize_payments/${batch_id}`,
         {
           method: "POST",
@@ -104,6 +109,8 @@ export default function Test() {
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
+
+      // Reset the statuses
       setLoading(false);
       setShowSuccess(true);
       setPendingPayments([]);
@@ -166,6 +173,8 @@ export default function Test() {
           </TableHeader>
           <TableBody>
             {pendingPayments.map((payment) => (
+              // For each payment record, display the needed info
+              // Improvement: Add an interface to type data
               <TableRow key={payment._id}>
                 <TableCell className="font-medium">
                   {payment.employee.dunkin_id}
@@ -179,6 +188,7 @@ export default function Test() {
           </TableBody>
 
           {loading ? (
+            // Conditionally render button depending on loading state
             <>
               <Button disabled>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -195,6 +205,8 @@ export default function Test() {
         </Table>
       ) : null}
       {showSuccess ? (
+        // Notify the user that the payments were processed
+        // Improvement: can create a component snackbar to display errors and success messages
         <Alert severity={"success"} icon={false}>
           Payments processes successfully!
         </Alert>

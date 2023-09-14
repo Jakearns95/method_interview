@@ -20,6 +20,7 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
+// Adds a header, styling, and routing logic at the top of screen
 export default function RootLayout({
   children,
 }: {
@@ -29,14 +30,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        {/*
-          This example requires updating your template:
-
-          ```
-          <html class="h-full">
-          <body class="h-full">
-          ```
-        */}
         <div className="min-h-full">
           <Disclosure as="nav" className="border-b border-gray-200 bg-white">
             {({ open }) => (
