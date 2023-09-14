@@ -14,7 +14,11 @@
    source venv/bin/activate
    ```
 
+- Open two terminal windows
+
 3. **Backend Setup**:
+
+   - Navigate to `/backend`
 
    - Install Poetry:
 
@@ -29,7 +33,8 @@
      ```
 
    - Set up Environment Variables (`.env.example` is present as a template for the needed variables):
-     \_Ensure you have your environment variables set up in a file named `.env.localdev`.\_
+
+     - Ensure you have your environment variables set up in a file named `.env.localdev`.
 
    - Run the Backend:
      ```bash
@@ -38,16 +43,18 @@
 
 4. **Frontend Setup**:
 
-   - Install Dependencies:
+- Navigate to `/frontend`
 
-     ```bash
-     yarn install
-     ```
+- Install Dependencies:
 
-   - Start the Development Server:
-     ```bash
-     yarn run dev
-     ```
+  ```bash
+  yarn install
+  ```
+
+- Start the Development Server:
+  ```bash
+  yarn run dev
+  ```
 
 ## Potential Improvements:
 
