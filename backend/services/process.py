@@ -168,7 +168,7 @@ class DataService:
     def process_xml(self, xml_content: str) -> List:
         try:
             data = xmltodict.parse(xml_content)
-            print("data", data)
+
             batch_id = self.save_batch_file(data)
             rows = data.get("root", {}).get("row", [])
             rows = [rows] if not isinstance(rows, list) else rows

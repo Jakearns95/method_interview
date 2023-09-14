@@ -19,7 +19,6 @@ class XMLPayload(BaseModel):
 @public_router.post("/upload_xml")
 def upload_xml(data: XMLPayload):
     try:
-        print(data)
         payments = DataService().process_xml(data.payload)
 
         # TODO: create builder for json api spec responses
