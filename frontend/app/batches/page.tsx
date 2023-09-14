@@ -69,7 +69,7 @@ export default function Batches() {
 
   return (
     <>
-      ADD HOME PAGE TITLE
+      Uploaded Files
       <Table>
         <TableCaption>A list of recently uploaded files.</TableCaption>
         <TableHeader>

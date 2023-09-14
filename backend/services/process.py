@@ -205,7 +205,6 @@ class DataService:
 
                     self.create_payment_record(payment_data, batch_id)
 
-            # TODO: reformat and move later
             pending_payments = self.get_all_payments_by_batch(batch_id)
             return self.convert_json(pending_payments)
         except Exception as e:

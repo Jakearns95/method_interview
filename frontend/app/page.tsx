@@ -7,9 +7,7 @@ import { Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -19,15 +17,7 @@ import { Terminal, Waves } from "lucide-react";
 import { Alert, Stack } from "@mui/material";
 
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormField, FormItem } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
 const FormSchema = z.object({
@@ -126,13 +116,10 @@ export default function Test() {
   function centsToDollars(cents: number): string {
     return `$${(cents / 100).toFixed(2)}`;
   }
-  // create function to send XML file
-  // Update display value of payments
-  // Create funtion to process payments
 
   return (
     <>
-      ADD HOME PAGE TITLE
+      <h1>Dashboard</h1>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
