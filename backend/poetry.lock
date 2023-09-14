@@ -541,6 +541,20 @@ files = [
 ]
 
 [[package]]
+name = "hammock"
+version = "0.2.4"
+description = "rest like a boss"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "hammock-0.2.4.tar.gz", hash = "sha256:a535f085b7c1c10f675761a8bc8853618cbc66f80d71491eb2486e53ce1f8730"},
+]
+
+[package.dependencies]
+requests = ">=1.1.0"
+
+[[package]]
 name = "humanize"
 version = "4.8.0"
 description = "Python humanize utilities"
@@ -768,6 +782,21 @@ files = [
     {file = "MarkupSafe-2.1.3-cp39-cp39-win_amd64.whl", hash = "sha256:3fd4abcb888d15a94f32b75d8fd18ee162ca0c064f35b11134be77050296d6ba"},
     {file = "MarkupSafe-2.1.3.tar.gz", hash = "sha256:af598ed32d6ae86f1b747b82783958b1a4ab8f617b06fe68795c7f026abbdcad"},
 ]
+
+[[package]]
+name = "method-python"
+version = "0.0.31"
+description = "Python library for the Method API"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "method-python-0.0.31.tar.gz", hash = "sha256:89dd8c5453c1797c93fe014469d4c39fecf3bb4eec1bd36d637aba20119d8a03"},
+    {file = "method_python-0.0.31-py3-none-any.whl", hash = "sha256:45f11510af955942bcb1fba5d4ba76f3c98a9df3b1cd363bd0846ca9b96ac6b2"},
+]
+
+[package.dependencies]
+hammock = "0.2.4"
 
 [[package]]
 name = "mongoengine"
@@ -1501,6 +1530,18 @@ files = [
 ]
 
 [[package]]
+name = "xmltodict"
+version = "0.13.0"
+description = "Makes working with XML feel like you are working with JSON"
+category = "main"
+optional = false
+python-versions = ">=3.4"
+files = [
+    {file = "xmltodict-0.13.0-py2.py3-none-any.whl", hash = "sha256:aa89e8fd76320154a40d19a0df04a4695fb9dc5ba977cbb68ab3e4eb225e7852"},
+    {file = "xmltodict-0.13.0.tar.gz", hash = "sha256:341595a488e3e01a85a9d8911d8912fd922ede5fecc4dce437eb4b6c8d037e56"},
+]
+
+[[package]]
 name = "zipp"
 version = "3.16.2"
 description = "Backport of pathlib-compatible object wrapper for zip files"
@@ -1519,4 +1560,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "010c6b0c34442747ae3951826b5842e283404421ff3a614bdaba4be00696322a"
+content-hash = "076e3ba5b2742777bb9e19c61509e8355b7ccf228436f5de091e675f08946262"

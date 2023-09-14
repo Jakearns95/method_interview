@@ -31,6 +31,8 @@ urllib3 = "1.25.11"
 uvicorn = "0.20.0"
 mongoengine="0.27.0"
 pymongo="3.13.0"
+xmltodict = "^0.13.0"
+method-python = "^0.0.31"
 
 [tool.black]
 exclude = '/(\.direnv|\.eggs|\.git|\.hg|\.mypy_cache|\.nox|\.tox|\.venv|venv|\.svn|\.ipynb_checkpoints|_build|buck-out|build|dist|__pypackages__|node_modules)/'
